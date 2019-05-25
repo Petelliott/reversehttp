@@ -14,13 +14,13 @@ func NewRequest(url string) (*http.Request, error) {
 		return req, err
 	}
 	req.Header.Add("Upgrade", "PTTH/1.0")
-	req.Header.Add("Connection", "Upgrage")
+	req.Header.Add("Connection", "Upgrade")
 	return req, nil
 }
 
 func IsReverseHTTPResponse(resp *http.Response) bool {
 	return resp.Header.Get("Upgrade") == "PTTH/1.0" &&
-		resp.Header.Get("Connection") == "Upgrage" &&
+		resp.Header.Get("Connection") == "Upgrade" &&
 		resp.StatusCode == http.StatusSwitchingProtocols
 }
 
@@ -60,6 +60,7 @@ func (r *response) WriteHeader(statusCode int) {
 		Header: r.header,
 	}
 	resp.Write(r.writer)
+	r.headwritten = true
 }
 
 func ReverseResponse(resp *http.Response, handler http.Handler) error {

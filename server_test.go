@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"bytes"
 	"io/ioutil"
+	"errors"
 )
 
 func TestIsReverseHTTPRequest(t *testing.T) {
@@ -23,6 +24,26 @@ func TestIsReverseHTTPRequest(t *testing.T) {
 	}))
 
 	expect(t, false, IsReverseHTTPRequest(nil))
+}
+
+type errorWriter struct {}
+
+func (ew errorWriter) Write(p []byte) (n int, err error) {
+	return 0, errors.New("error writers always fail, this is expected")
+}
+
+func TestIoTripper(t *testing.T) {
+	it := newIoTripper(errorWriter{}, nil)
+
+	r, err := http.NewRequest("GET", "http://example.com/path", nil)
+	if err != nil {
+		t.Error()
+	}
+
+	_, err = it.RoundTrip(r)
+	if err == nil {
+		t.Error()
+	}
 }
 
 func TestReverseRequest(t *testing.T) {

@@ -9,6 +9,10 @@ import (
 )
 
 func IsReverseHTTPRequest(req *http.Request) bool {
+	if req == nil {
+		return false
+	}
+
 	return req.Header.Get("Upgrade") == "PTTH/1.0" &&
 		req.Header.Get("Connection") == "Upgrade"
 }

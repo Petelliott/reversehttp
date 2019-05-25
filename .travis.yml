@@ -1,0 +1,17 @@
+language: go
+
+go:
+  - "1.12.x"
+
+go_import_path: github.com/petelliott/reversehttp
+
+before_install:
+  - go get github.com/mattn/goveralls
+
+install:
+  - go get -t github.com/petelliott/reversehttp
+  - go install -i github.com/petelliott/reversehttp
+
+script:
+  - go test -v -covermode=count -coverprofile=coverage.out .
+  - goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN

@@ -76,7 +76,7 @@ func ReverseResponse(resp *http.Response, handler http.Handler) error {
 
 	req, err := http.ReadRequest(bufio.NewReader(breader))
 	if err != nil {
-		return fmt.Errorf("error reading request: ", err)
+		return fmt.Errorf("error reading request: %v", err)
 	}
 	req.Body = breader
 	handler.ServeHTTP(newResponse(req, bwriter), req)

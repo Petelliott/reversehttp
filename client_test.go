@@ -3,6 +3,7 @@ package reversehttp
 import (
 	"testing"
 	"fmt"
+	"net/http"
 )
 
 func expect(t *testing.T, expected interface{}, got interface{}) {
@@ -27,4 +28,27 @@ func TestNewRequest(t *testing.T) {
 	if err == nil {
 		t.Error()
 	}
+}
+
+func TestIsReverseHTTPResponse(t *testing.T) {
+	h := http.Header{}
+	h.Add("upgrade", "PTTH/1.0")
+	h.Add("CONNECTION", "Upgrade")
+	expect(t, true, IsReverseHTTPResponse(&http.Response{
+		StatusCode: 101,
+		Header: h,
+	}))
+
+	expect(t, false, IsReverseHTTPResponse(&http.Response{
+		StatusCode: 200,
+		Header: h,
+	}))
+
+	h.Del("upgrade")
+	expect(t, false, IsReverseHTTPResponse(&http.Response{
+		StatusCode: 101,
+		Header: h,
+	}))
+
+	expect(t, false, IsReverseHTTPResponse(nil))
 }

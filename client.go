@@ -19,6 +19,10 @@ func NewRequest(url string) (*http.Request, error) {
 }
 
 func IsReverseHTTPResponse(resp *http.Response) bool {
+	if resp == nil {
+		return false
+	}
+
 	return resp.Header.Get("Upgrade") == "PTTH/1.0" &&
 		resp.Header.Get("Connection") == "Upgrade" &&
 		resp.StatusCode == http.StatusSwitchingProtocols

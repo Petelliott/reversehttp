@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"bytes"
+	"io/ioutil"
 )
 
 func expect(t *testing.T, expected interface{}, got interface{}) bool {
@@ -56,4 +58,35 @@ func TestIsReverseHTTPResponse(t *testing.T) {
 	expect(t, false, IsReverseHTTPResponse(nil))
 }
 
+func TestInternalResponse(t *testing.T) {
+	req, err := NewRequest("http://example.com/path")
+	expect(t, nil, err)
+
+	buf := bytes.NewBuffer(make([]byte, 0))
+
+	resp := newResponse(req, buf)
+	resp.Header().Add("Content-Type", "application/x-testtype")
+
+	resp.Write([]byte("hello world\n"))
+
+	b, err := ioutil.ReadAll(buf)
+	expect(t, nil, err)
+	expected := []byte("HTTP/1.1 200 OK\r\nContent-Length: 0\r\nContent-Type: application/x-testtype\r\n\r\nhello world\n")
+	expect(t, expected, b)
+
+	// test with writeheader
+	buf = bytes.NewBuffer(make([]byte, 0))
+
+	resp = newResponse(req, buf)
+	resp.Header().Add("Content-Type", "application/x-testtype")
+
+	resp.WriteHeader(http.StatusOK)
+	resp.WriteHeader(http.StatusOK)
+	resp.Write([]byte("hello world\n"))
+
+	b, err = ioutil.ReadAll(buf)
+	expect(t, nil, err)
+	expect(t, expected, b)
+
+}
 

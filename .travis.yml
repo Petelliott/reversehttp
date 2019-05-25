@@ -13,5 +13,5 @@ install:
   - go install -i github.com/petelliott/reversehttp
 
 script:
-  - go test -v -covermode=count -coverprofile=coverage.out -coverpkg=. .
+  - go test -v -coverpkg=./... -covermode=count -coverprofile=coverage.out .
   - goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN

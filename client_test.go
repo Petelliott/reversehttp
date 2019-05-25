@@ -4,13 +4,16 @@ import (
 	"testing"
 	"fmt"
 	"net/http"
+	"reflect"
 )
 
-func expect(t *testing.T, expected interface{}, got interface{}) {
-	if expected != got {
-		fmt.Printf("expected: %v, got: %v", expected, got)
+func expect(t *testing.T, expected interface{}, got interface{}) bool {
+	if !reflect.DeepEqual(expected, got) {
+		fmt.Printf("expected: %v, got: %v\n", expected, got)
 		t.Error()
+		return false
 	}
+	return true
 }
 
 func TestNewRequest(t *testing.T) {
@@ -19,7 +22,7 @@ func TestNewRequest(t *testing.T) {
 		t.Error()
 	} else {
 		if !IsReverseHTTPRequest(req) {
-			fmt.Printf("req '%v' is not a valid reverse http request", req)
+			fmt.Printf("req '%v' is not a valid reverse http request\n", req)
 			t.Error()
 		}
 	}

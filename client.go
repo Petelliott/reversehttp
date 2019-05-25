@@ -81,3 +81,17 @@ func ReverseResponse(resp *http.Response, handler http.Handler) error {
 	handler.ServeHTTP(newResponse(req, bwriter), req)
 	return nil
 }
+
+func Reverse(url string, handler http.Handler) error {
+	req, err := NewRequest(url)
+	if err != nil {
+		return err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	return ReverseResponse(resp, handler)
+}

@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"bytes"
 	"io/ioutil"
+	"io"
 )
 
 func expect(t *testing.T, expected interface{}, got interface{}) bool {
@@ -88,5 +89,77 @@ func TestInternalResponse(t *testing.T) {
 	expect(t, nil, err)
 	expect(t, expected, b)
 
+}
+
+type testBody struct {
+	Writer io.Writer
+	Reader io.Reader
+}
+
+func (tb *testBody) Close() error {
+	return nil
+}
+
+func (tb *testBody) Write(p []byte) (n int, err error) {
+	return tb.Writer.Write(p)
+}
+
+func (tb *testBody) Read(p []byte) (n int, err error) {
+	return tb.Reader.Read(p)
+}
+
+func TestReverseResponse(t *testing.T) {
+	// simple echo handler
+	var handler http.HandlerFunc
+	handler = func(w http.ResponseWriter, r *http.Request) {
+		expect(t, "text/plain", r.Header.Get("Content-Type"))
+		w.Header().Add("Content-Type", "text/plain")
+		_, err := io.Copy(w, r.Body)
+		expect(t, nil, err)
+	}
+
+	err := ReverseResponse(&http.Response{
+		StatusCode: http.StatusOK,
+	}, handler)
+
+	if err == nil {
+		t.Error()
+	}
+
+	h := http.Header{}
+	h.Add("upgrade", "PTTH/1.0")
+	h.Add("CONNECTION", "Upgrade")
+
+	err = ReverseResponse(&http.Response{
+		StatusCode: http.StatusSwitchingProtocols,
+		Header: h,
+		Body: &testBody{new(bytes.Buffer), new(bytes.Buffer)},
+	}, handler)
+	if err == nil {
+		t.Error()
+	}
+
+	wbuf := new(bytes.Buffer)
+	rbuf := new(bytes.Buffer)
+
+	rh := http.Header{}
+	rh.Add("Content-Type", "text/plain")
+	req, err := http.NewRequest("GET", "http://example.com/path",
+		ioutil.NopCloser(bytes.NewReader([]byte("hello world\n"))))
+	req.Header = rh
+	expect(t, nil, err)
+
+	req.Write(rbuf)
+
+	err = ReverseResponse(&http.Response{
+		StatusCode: http.StatusSwitchingProtocols,
+		Header: h,
+		Body: &testBody{wbuf, rbuf},
+	}, handler)
+	if expect(t, nil, err) {
+		b, err := ioutil.ReadAll(wbuf)
+		expect(t, nil, err)
+		expect(t, []byte("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 0\r\n\r\nhello world\n"), b)
+	}
 }
 

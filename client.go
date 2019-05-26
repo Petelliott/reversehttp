@@ -82,7 +82,6 @@ func ReverseResponse(resp *http.Response, handler http.Handler) error {
 	if err != nil {
 		return fmt.Errorf("error reading request: %v", err)
 	}
-	req.Body = breader
 	handler.ServeHTTP(newResponse(req, bwriter), req)
 	return nil
 }

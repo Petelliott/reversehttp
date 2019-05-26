@@ -31,11 +31,12 @@ func (it *ioTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	it.mu.Lock()
 	defer it.mu.Unlock()
 
-	err := req.Write(it.rw)
+	// write will usually not error, if it does flush will also error
+	req.Write(it.rw)
+	err := it.rw.Flush()
 	if err != nil {
 		return nil, err
 	}
-	it.rw.Flush()
 	resp, err := http.ReadResponse(it.rw.Reader, req)
 	return resp, err
 }

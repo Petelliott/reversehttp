@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"errors"
 	"bufio"
+	"net"
 )
 
 func TestIsReverseHTTPRequest(t *testing.T) {
@@ -37,6 +38,7 @@ func (ew errorWriter) Read(p []byte) (n int, err error) {
 	return 0, errors.New("error writers always fail, this is expected")
 }
 
+
 func TestIoTripper(t *testing.T) {
 	it := newIoTripper(bufio.NewReadWriter(bufio.NewReader(errorWriter{}), bufio.NewWriter(errorWriter{})))
 
@@ -51,6 +53,14 @@ func TestIoTripper(t *testing.T) {
 	}
 }
 
+type ResponseHijackFailer struct {
+	http.ResponseWriter
+}
+
+func (rhf *ResponseHijackFailer) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	return nil, nil, errors.New("ResponseHijackFailer will always fail to hijack")
+}
+
 func TestReverseRequest(t *testing.T) {
 	w := httptest.NewRecorder()
 
@@ -60,6 +70,11 @@ func TestReverseRequest(t *testing.T) {
 	}
 
 	_, err = ReverseRequest(w, r)
+	if err == nil {
+		t.Error()
+	}
+
+	_, err = ReverseRequest(ResponseHijackFailer{w}, r)
 	if err == nil {
 		t.Error()
 	}

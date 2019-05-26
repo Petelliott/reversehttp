@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"io/ioutil"
 	"io"
+	"bufio"
 )
 
 func expect(t *testing.T, expected interface{}, got interface{}) bool {
@@ -164,6 +165,7 @@ func TestReverseResponse(t *testing.T) {
 	}
 }
 
+
 func TestReverse(t *testing.T) {
 	// simple echo handler
 	var handler http.HandlerFunc
@@ -179,17 +181,18 @@ func TestReverse(t *testing.T) {
 		t.Error(err)
 	}
 
-	// TODO: this is currently covered in the integration test,
-	//       but this should be fixed either way
-	/*
 	http.DefaultClient = &http.Client {
-		Transport: newIoTripper(errorWriter{}, nil),
+		Transport: newIoTripper(bufio.NewReadWriter(bufio.NewReader(errorWriter{}), bufio.NewWriter(errorWriter{}))),
 	}
 
 	err = Reverse("http://example.com/path", handler)
 	if err == nil {
 		t.Error(err)
 	}
+
+	// TODO: this is currently covered in the integration test,
+	//       but this should be fixed either way
+	/*
 
 	wbuf := new(bytes.Buffer)
 	rbuf := new(bytes.Buffer)

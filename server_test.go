@@ -74,7 +74,9 @@ func TestReverseRequest(t *testing.T) {
 		t.Error()
 	}
 
-	_, err = ReverseRequest(ResponseHijackFailer{w}, r)
+	r, err = NewRequest("http://example.com/path")
+	expect(t, nil, err)
+	_, err = ReverseRequest(&ResponseHijackFailer{w}, r)
 	if err == nil {
 		t.Error()
 	}

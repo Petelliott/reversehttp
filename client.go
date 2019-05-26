@@ -6,6 +6,8 @@ import (
 	"io"
 	"bufio"
 	"fmt"
+	"bytes"
+	"io/ioutil"
 )
 
 func NewRequest(url string) (*http.Request, error) {
@@ -30,13 +32,15 @@ func IsReverseHTTPResponse(resp *http.Response) bool {
 
 type response struct {
 	writer io.Writer
+	bodybuf *bytes.Buffer
 	req *http.Request
+	status int
 	header http.Header
 	headwritten bool
 }
 
 func newResponse(req *http.Request, writer io.Writer) *response {
-	r := response{writer, req, http.Header{}, false}
+	r := response{writer, new(bytes.Buffer), req, 0, http.Header{}, false}
 	return &r
 }
 
@@ -49,22 +53,31 @@ func (r *response) Write(b []byte) (int, error) {
 		r.WriteHeader(http.StatusOK)
 	}
 
-	return r.writer.Write(b)
+	return r.bodybuf.Write(b)
 }
 
 func (r *response) WriteHeader(statusCode int) {
 	if r.headwritten {
 		return
 	}
+
+	r.status = statusCode
+
+	r.headwritten = true
+}
+
+func (r *response) Flush() {
 	resp := http.Response{
-		StatusCode: statusCode,
+		StatusCode: r.status,
 		ProtoMajor: 1,
 		ProtoMinor: 1,
 		Request: r.req,
 		Header: r.header,
+		ContentLength: int64(r.bodybuf.Len()),
+		Body: ioutil.NopCloser(r.bodybuf),
 	}
+
 	resp.Write(r.writer)
-	r.headwritten = true
 }
 
 func ReverseResponse(resp *http.Response, handler http.Handler) error {
@@ -82,7 +95,10 @@ func ReverseResponse(resp *http.Response, handler http.Handler) error {
 	if err != nil {
 		return fmt.Errorf("error reading request: %v", err)
 	}
-	handler.ServeHTTP(newResponse(req, bwriter), req)
+	w := newResponse(req, bwriter)
+	handler.ServeHTTP(w, req)
+	w.Flush()
+	resp.Body.Close()
 	return nil
 }
 
@@ -96,6 +112,9 @@ func Reverse(url string, handler http.Handler) error {
 	if err != nil {
 		return err
 	}
-
 	return ReverseResponse(resp, handler)
+}
+
+func ReverseFunc(url string, fun func(w http.ResponseWriter, r *http.Request)) error {
+	return Reverse(url, http.HandlerFunc(fun))
 }

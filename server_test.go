@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"io/ioutil"
 	"errors"
+	"bufio"
 )
 
 func TestIsReverseHTTPRequest(t *testing.T) {
@@ -32,8 +33,12 @@ func (ew errorWriter) Write(p []byte) (n int, err error) {
 	return 0, errors.New("error writers always fail, this is expected")
 }
 
+func (ew errorWriter) Read(p []byte) (n int, err error) {
+	return 0, errors.New("error writers always fail, this is expected")
+}
+
 func TestIoTripper(t *testing.T) {
-	it := newIoTripper(errorWriter{}, nil)
+	it := newIoTripper(bufio.NewReadWriter(bufio.NewReader(errorWriter{}), bufio.NewWriter(errorWriter{})))
 
 	r, err := http.NewRequest("GET", "http://example.com/path", nil)
 	if err != nil {
@@ -59,23 +64,30 @@ func TestReverseRequest(t *testing.T) {
 		t.Error()
 	}
 
-	r, err = NewRequest("http://example.com/path")
-	r.Body = ioutil.NopCloser(bytes.NewReader([]byte("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nhello world\n")))
-	if err != nil {
-		t.Error()
-	}
-
-	c, err := ReverseRequest(w, r)
-	if err != nil {
-		t.Error()
-	} else {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c, err := ReverseRequest(w, r)
+		expect(t, nil, err)
 		resp, err := c.Get("http://example.com/path2")
-		if expect(t, nil, err) {
-			expect(t, "text/plain", resp.Header.Get("Content-Type"))
+		expect(t, nil, err)
 
-			b, err := ioutil.ReadAll(resp.Body)
-			expect(t, nil, err)
-			expect(t, []byte("hello world\n"), b)
-		}
-	}
+		expect(t, "text/plain", resp.Header.Get("Content-Type"))
+
+		b, err := ioutil.ReadAll(resp.Body)
+		expect(t, nil, err)
+		expect(t, []byte("hello world\n"), b)
+	}))
+
+	r, err = NewRequest(srv.URL)
+	r.Body = ioutil.NopCloser(bytes.NewReader([]byte("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nhello world\n")))
+	expect(t, nil, err)
+
+	client := srv.Client()
+	resp, err := client.Do(r)
+	expect(t, nil, err)
+
+	innerreq, err := http.ReadRequest(bufio.NewReader(resp.Body))
+	expect(t, nil, err)
+
+	expect(t, "GET", innerreq.Method)
+	expect(t, "/path2", innerreq.URL.String())
 }

@@ -12,8 +12,7 @@ import (
 
 func expect(t *testing.T, expected interface{}, got interface{}) bool {
 	if !reflect.DeepEqual(expected, got) {
-		fmt.Printf("expected: %v, got: %v\n", expected, got)
-		t.Error()
+		t.Error(fmt.Sprintf("expected: %v, got: %v\n", expected, got))
 		return false
 	}
 	return true
@@ -69,10 +68,11 @@ func TestInternalResponse(t *testing.T) {
 	resp.Header().Add("Content-Type", "application/x-testtype")
 
 	resp.Write([]byte("hello world\n"))
+	resp.Flush()
 
 	b, err := ioutil.ReadAll(buf)
 	expect(t, nil, err)
-	expected := []byte("HTTP/1.1 200 OK\r\nContent-Length: 0\r\nContent-Type: application/x-testtype\r\n\r\nhello world\n")
+	expected := []byte("HTTP/1.1 200 OK\r\nContent-Length: 12\r\nContent-Type: application/x-testtype\r\n\r\nhello world\n")
 	expect(t, expected, b)
 
 	// test with writeheader
@@ -84,6 +84,7 @@ func TestInternalResponse(t *testing.T) {
 	resp.WriteHeader(http.StatusOK)
 	resp.WriteHeader(http.StatusOK)
 	resp.Write([]byte("hello world\n"))
+	resp.Flush()
 
 	b, err = ioutil.ReadAll(buf)
 	expect(t, nil, err)
@@ -159,7 +160,69 @@ func TestReverseResponse(t *testing.T) {
 	if expect(t, nil, err) {
 		b, err := ioutil.ReadAll(wbuf)
 		expect(t, nil, err)
-		expect(t, []byte("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 0\r\n\r\nhello world\n"), b)
+		expect(t, []byte("HTTP/1.1 200 OK\r\nContent-Length: 12\r\nContent-Type: text/plain\r\n\r\nhello world\n"), b)
 	}
 }
 
+func TestReverse(t *testing.T) {
+	// simple echo handler
+	var handler http.HandlerFunc
+	handler = func(w http.ResponseWriter, r *http.Request) {
+		expect(t, "text/plain", r.Header.Get("Content-Type"))
+		w.Header().Add("Content-Type", "text/plain")
+		_, err := io.Copy(w, r.Body)
+		expect(t, nil, err)
+	}
+
+	err := Reverse("asdkjfklvqnvnon  idga %%2", handler)
+	if err == nil {
+		t.Error(err)
+	}
+
+	// TODO: this is currently covered in the integration test,
+	//       but this should be fixed either way
+	/*
+	http.DefaultClient = &http.Client {
+		Transport: newIoTripper(errorWriter{}, nil),
+	}
+
+	err = Reverse("http://example.com/path", handler)
+	if err == nil {
+		t.Error(err)
+	}
+
+	wbuf := new(bytes.Buffer)
+	rbuf := new(bytes.Buffer)
+
+	rh := http.Header{}
+	rh.Add("Content-Type", "text/plain")
+	req, err := http.NewRequest("POST", "http://example.com/path",
+		ioutil.NopCloser(bytes.NewReader([]byte("hello world\n"))))
+	req.Header = rh
+	expect(t, nil, err)
+
+	resp := http.Response{
+		StatusCode: http.StatusSwitchingProtocols,
+		ProtoMajor: 1,
+		ProtoMinor: 1,
+		Request: req,
+		Header: http.Header{},
+	}
+	resp.Header.Add("Upgrade", "PTTH/1.0")
+	resp.Header.Add("Connection", "Upgrade")
+	resp.Write(rbuf)
+
+	req.Write(rbuf)
+
+	//x, _ := ioutil.ReadAll(rbuf)
+	//fmt.Println(string(x))
+
+	http.DefaultClient = &http.Client{
+		Transport: newIoTripper(wbuf, rbuf),
+	}
+	//err = Reverse("http://example.com/path", handler)
+	//expect(t, nil, err)
+	//b, _ := ioutil.ReadAll(wbuf)
+	//fmt.Println(string(b))
+	*/
+}

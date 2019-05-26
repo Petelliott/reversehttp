@@ -3,7 +3,6 @@ package reversehttp
 import (
 	"net/http"
 	"errors"
-	"io"
 	"bufio"
 	"sync"
 )
@@ -19,14 +18,12 @@ func IsReverseHTTPRequest(req *http.Request) bool {
 
 type ioTripper struct {
 	mu sync.Mutex
-	writer io.Writer
-	reader io.Reader
+	rw *bufio.ReadWriter
 }
 
-func newIoTripper(writer io.Writer, reader io.Reader) *ioTripper {
+func newIoTripper(rw *bufio.ReadWriter) *ioTripper {
 	return &ioTripper{
-		writer: writer,
-		reader: reader,
+		rw: rw,
 	}
 }
 
@@ -34,11 +31,13 @@ func (it *ioTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	it.mu.Lock()
 	defer it.mu.Unlock()
 
-	err := req.Write(it.writer)
+	err := req.Write(it.rw)
 	if err != nil {
 		return nil, err
 	}
-	return http.ReadResponse(bufio.NewReader(it.reader), req)
+	it.rw.Flush()
+	resp, err := http.ReadResponse(it.rw.Reader, req)
+	return resp, err
 }
 
 func ReverseRequest(w http.ResponseWriter, r *http.Request) (*http.Client, error) {
@@ -49,7 +48,12 @@ func ReverseRequest(w http.ResponseWriter, r *http.Request) (*http.Client, error
 	w.Header().Add("Connection", "Upgrade")
 	w.WriteHeader(http.StatusSwitchingProtocols)
 
+	_, buf, err := w.(http.Hijacker).Hijack()
+	if err != nil {
+		return nil, err
+	}
+
 	return &http.Client {
-		Transport: newIoTripper(w, r.Body),
+		Transport: newIoTripper(buf),
 	}, nil
 }

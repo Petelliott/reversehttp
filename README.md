@@ -30,7 +30,7 @@ http.HandleFunc("/ptth", func(w http.ResponseWriter, r *http.Request) {
 ### client
 
 ```go
-err := ReverseFunc(srv.URL, func(w http.ResponseWriter, r *http.Request) {
+err := ReverseFunc("http://example.com/ptth", func(w http.ResponseWriter, r *http.Request) {
 	// this could be any http.Handler
 	w.Header().Add("Content-Type", "text/plain")
 	w.Write([]byte("hello world\n"))

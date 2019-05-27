@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 )
 
+// Creates an http.Request that will upgrade the connections to Reverse HTTP.
 func NewRequest(url string) (*http.Request, error) {
 	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
@@ -20,6 +21,10 @@ func NewRequest(url string) (*http.Request, error) {
 	return req, nil
 }
 
+// Returns true if response is a valid Reverse HTTP upgrade Response
+// (i.e. a valid HTTP/1.1 protocol upgrade response where the Upgrade Header
+// is "PTTH/1.0).
+// This function will return False otherwise, including when resp is nil.
 func IsReverseHTTPResponse(resp *http.Response) bool {
 	if resp == nil {
 		return false
@@ -80,6 +85,8 @@ func (r *response) Flush() {
 	resp.Write(r.writer)
 }
 
+// Serves the http request in the upgraded body of response with the provided
+// handler.
 func ReverseResponse(resp *http.Response, handler http.Handler) error {
 	if !IsReverseHTTPResponse(resp) {
 		return errors.New(
@@ -102,6 +109,8 @@ func ReverseResponse(resp *http.Response, handler http.Handler) error {
 	return nil
 }
 
+// Makes a Reverse HTTP request to url, executes it using http.DefaultClient,
+// and then calls ReverseResponse on the response and provided handler.
 func Reverse(url string, handler http.Handler) error {
 	req, err := NewRequest(url)
 	if err != nil {
@@ -115,6 +124,7 @@ func Reverse(url string, handler http.Handler) error {
 	return ReverseResponse(resp, handler)
 }
 
+// Exactly the Same as Reverse but takes a function compatible with http.HandlerFunc instead of an http.Handler
 func ReverseFunc(url string, fun func(w http.ResponseWriter, r *http.Request)) error {
 	return Reverse(url, http.HandlerFunc(fun))
 }

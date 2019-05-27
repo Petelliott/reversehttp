@@ -7,6 +7,9 @@
 // http, the server upgrades the connection, and then the connection becomes like
 // a TCP connection for the server to make a request to the client on.
 //
+// see https://tools.ietf.org/html/draft-lentczner-rhttp-00 for the IETF draft
+// this is based on.
+//
 // Example
 //
 // Server:

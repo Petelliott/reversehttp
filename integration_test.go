@@ -1,12 +1,11 @@
 package reversehttp
 
 import (
-	"testing"
-	"net/http/httptest"
-	"net/http"
 	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
+	"testing"
 )
-
 
 func TestSimpleCase(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

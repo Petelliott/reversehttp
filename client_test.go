@@ -1,14 +1,14 @@
 package reversehttp
 
 import (
-	"testing"
+	"bufio"
+	"bytes"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"reflect"
-	"bytes"
-	"io/ioutil"
-	"io"
-	"bufio"
+	"testing"
 )
 
 func expect(t *testing.T, expected interface{}, got interface{}) bool {
@@ -30,7 +30,7 @@ func TestNewRequest(t *testing.T) {
 		}
 	}
 
-	req, err = NewRequest("asdkjfklvqnvnon  idga %%2")
+	_, err = NewRequest("asdkjfklvqnvnon  idga %%2")
 	if err == nil {
 		t.Error()
 	}
@@ -42,18 +42,18 @@ func TestIsReverseHTTPResponse(t *testing.T) {
 	h.Add("CONNECTION", "Upgrade")
 	expect(t, true, IsReverseHTTPResponse(&http.Response{
 		StatusCode: 101,
-		Header: h,
+		Header:     h,
 	}))
 
 	expect(t, false, IsReverseHTTPResponse(&http.Response{
 		StatusCode: 200,
-		Header: h,
+		Header:     h,
 	}))
 
 	h.Del("upgrade")
 	expect(t, false, IsReverseHTTPResponse(&http.Response{
 		StatusCode: 101,
-		Header: h,
+		Header:     h,
 	}))
 
 	expect(t, false, IsReverseHTTPResponse(nil))
@@ -134,8 +134,8 @@ func TestReverseResponse(t *testing.T) {
 
 	err = ReverseResponse(&http.Response{
 		StatusCode: http.StatusSwitchingProtocols,
-		Header: h,
-		Body: &testBody{new(bytes.Buffer), new(bytes.Buffer)},
+		Header:     h,
+		Body:       &testBody{new(bytes.Buffer), new(bytes.Buffer)},
 	}, handler)
 	if err == nil {
 		t.Error()
@@ -155,8 +155,8 @@ func TestReverseResponse(t *testing.T) {
 
 	err = ReverseResponse(&http.Response{
 		StatusCode: http.StatusSwitchingProtocols,
-		Header: h,
-		Body: &testBody{wbuf, rbuf},
+		Header:     h,
+		Body:       &testBody{wbuf, rbuf},
 	}, handler)
 	if expect(t, nil, err) {
 		b, err := ioutil.ReadAll(wbuf)
@@ -164,7 +164,6 @@ func TestReverseResponse(t *testing.T) {
 		expect(t, []byte("HTTP/1.1 200 OK\r\nContent-Length: 12\r\nContent-Type: text/plain\r\n\r\nhello world\n"), b)
 	}
 }
-
 
 func TestReverse(t *testing.T) {
 	// simple echo handler
@@ -181,7 +180,7 @@ func TestReverse(t *testing.T) {
 		t.Error(err)
 	}
 
-	http.DefaultClient = &http.Client {
+	http.DefaultClient = &http.Client{
 		Transport: newIoTripper(bufio.NewReadWriter(bufio.NewReader(errorWriter{}), bufio.NewWriter(errorWriter{}))),
 	}
 
@@ -194,38 +193,38 @@ func TestReverse(t *testing.T) {
 	//       but this should be fixed either way
 	/*
 
-	wbuf := new(bytes.Buffer)
-	rbuf := new(bytes.Buffer)
+		wbuf := new(bytes.Buffer)
+		rbuf := new(bytes.Buffer)
 
-	rh := http.Header{}
-	rh.Add("Content-Type", "text/plain")
-	req, err := http.NewRequest("POST", "http://example.com/path",
-		ioutil.NopCloser(bytes.NewReader([]byte("hello world\n"))))
-	req.Header = rh
-	expect(t, nil, err)
+		rh := http.Header{}
+		rh.Add("Content-Type", "text/plain")
+		req, err := http.NewRequest("POST", "http://example.com/path",
+			ioutil.NopCloser(bytes.NewReader([]byte("hello world\n"))))
+		req.Header = rh
+		expect(t, nil, err)
 
-	resp := http.Response{
-		StatusCode: http.StatusSwitchingProtocols,
-		ProtoMajor: 1,
-		ProtoMinor: 1,
-		Request: req,
-		Header: http.Header{},
-	}
-	resp.Header.Add("Upgrade", "PTTH/1.0")
-	resp.Header.Add("Connection", "Upgrade")
-	resp.Write(rbuf)
+		resp := http.Response{
+			StatusCode: http.StatusSwitchingProtocols,
+			ProtoMajor: 1,
+			ProtoMinor: 1,
+			Request: req,
+			Header: http.Header{},
+		}
+		resp.Header.Add("Upgrade", "PTTH/1.0")
+		resp.Header.Add("Connection", "Upgrade")
+		resp.Write(rbuf)
 
-	req.Write(rbuf)
+		req.Write(rbuf)
 
-	//x, _ := ioutil.ReadAll(rbuf)
-	//fmt.Println(string(x))
+		//x, _ := ioutil.ReadAll(rbuf)
+		//fmt.Println(string(x))
 
-	http.DefaultClient = &http.Client{
-		Transport: newIoTripper(wbuf, rbuf),
-	}
-	//err = Reverse("http://example.com/path", handler)
-	//expect(t, nil, err)
-	//b, _ := ioutil.ReadAll(wbuf)
-	//fmt.Println(string(b))
+		http.DefaultClient = &http.Client{
+			Transport: newIoTripper(wbuf, rbuf),
+		}
+		//err = Reverse("http://example.com/path", handler)
+		//expect(t, nil, err)
+		//b, _ := ioutil.ReadAll(wbuf)
+		//fmt.Println(string(b))
 	*/
 }

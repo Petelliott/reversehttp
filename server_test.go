@@ -1,14 +1,14 @@
 package reversehttp
 
 import (
-	"testing"
+	"bufio"
+	"bytes"
+	"errors"
+	"io/ioutil"
+	"net"
 	"net/http"
 	"net/http/httptest"
-	"bytes"
-	"io/ioutil"
-	"errors"
-	"bufio"
-	"net"
+	"testing"
 )
 
 func TestIsReverseHTTPRequest(t *testing.T) {
@@ -19,7 +19,6 @@ func TestIsReverseHTTPRequest(t *testing.T) {
 		Header: h,
 	}))
 
-
 	h.Del("upgrade")
 	expect(t, false, IsReverseHTTPRequest(&http.Request{
 		Header: h,
@@ -28,7 +27,7 @@ func TestIsReverseHTTPRequest(t *testing.T) {
 	expect(t, false, IsReverseHTTPRequest(nil))
 }
 
-type errorWriter struct {}
+type errorWriter struct{}
 
 func (ew errorWriter) Write(p []byte) (n int, err error) {
 	return 0, errors.New("error writers always fail, this is expected")
@@ -37,7 +36,6 @@ func (ew errorWriter) Write(p []byte) (n int, err error) {
 func (ew errorWriter) Read(p []byte) (n int, err error) {
 	return 0, errors.New("error writers always fail, this is expected")
 }
-
 
 func TestIoTripper(t *testing.T) {
 	it := newIoTripper(bufio.NewReadWriter(bufio.NewReader(errorWriter{}), bufio.NewWriter(errorWriter{})))

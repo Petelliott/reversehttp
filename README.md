@@ -6,6 +6,7 @@ reversehttp is a reverse http server/client library based on
 [![Build Status](https://travis-ci.com/Petelliott/reversehttp.svg?branch=master)](https://travis-ci.com/Petelliott/reversehttp)
 [![Coverage Status](https://coveralls.io/repos/github/Petelliott/reversehttp/badge.svg?branch=master)](https://coveralls.io/github/Petelliott/reversehttp?branch=master)
 [![GoDoc](https://godoc.org/github.com/Petelliott/reversehttp?status.svg)](https://godoc.org/github.com/Petelliott/reversehttp)
+[![Go Report Card](https://goreportcard.com/badge/github.com/petelliott/reversehttp)](https://goreportcard.com/report/github.com/petelliott/reversehttp)
 
 ## installation
 

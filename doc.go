@@ -1,4 +1,4 @@
-// reversehttp allows you to make and respond to reverse http requests
+// Package reversehttp allows you to make and respond to reverse http requests
 //
 // Reverse Http
 //

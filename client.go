@@ -1,16 +1,17 @@
 package reversehttp
 
 import (
-	"net/http"
-	"errors"
-	"io"
 	"bufio"
-	"fmt"
 	"bytes"
+	"errors"
+	"fmt"
+	"io"
 	"io/ioutil"
+	"net/http"
 )
 
-// Creates an http.Request that will upgrade the connections to Reverse HTTP.
+// NewRequest creates an http.Request that will upgrade the connections to
+// Reverse HTTP.
 func NewRequest(url string) (*http.Request, error) {
 	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
@@ -21,10 +22,10 @@ func NewRequest(url string) (*http.Request, error) {
 	return req, nil
 }
 
-// Returns true if response is a valid Reverse HTTP upgrade Response
-// (i.e. a valid HTTP/1.1 protocol upgrade response where the Upgrade Header
-// is "PTTH/1.0).
-// This function will return False otherwise, including when resp is nil.
+// IsReverseHTTPResponse returns true if response is a valid Reverse HTTP
+// upgrade Response (i.e. a valid HTTP/1.1 protocol upgrade response where the
+// Upgrade Header is "PTTH/1.0).  This function will return False otherwise,
+// including when resp is nil.
 func IsReverseHTTPResponse(resp *http.Response) bool {
 	if resp == nil {
 		return false
@@ -36,11 +37,11 @@ func IsReverseHTTPResponse(resp *http.Response) bool {
 }
 
 type response struct {
-	writer io.Writer
-	bodybuf *bytes.Buffer
-	req *http.Request
-	status int
-	header http.Header
+	writer      io.Writer
+	bodybuf     *bytes.Buffer
+	req         *http.Request
+	status      int
+	header      http.Header
 	headwritten bool
 }
 
@@ -73,20 +74,20 @@ func (r *response) WriteHeader(statusCode int) {
 
 func (r *response) Flush() {
 	resp := http.Response{
-		StatusCode: r.status,
-		ProtoMajor: 1,
-		ProtoMinor: 1,
-		Request: r.req,
-		Header: r.header,
+		StatusCode:    r.status,
+		ProtoMajor:    1,
+		ProtoMinor:    1,
+		Request:       r.req,
+		Header:        r.header,
 		ContentLength: int64(r.bodybuf.Len()),
-		Body: ioutil.NopCloser(r.bodybuf),
+		Body:          ioutil.NopCloser(r.bodybuf),
 	}
 
 	resp.Write(r.writer)
 }
 
-// Serves the http request in the upgraded body of response with the provided
-// handler.
+// ReverseResponse serves the http request in the upgraded body of response
+// with the provided handler.
 func ReverseResponse(resp *http.Response, handler http.Handler) error {
 	if !IsReverseHTTPResponse(resp) {
 		return errors.New(
@@ -109,8 +110,9 @@ func ReverseResponse(resp *http.Response, handler http.Handler) error {
 	return nil
 }
 
-// Makes a Reverse HTTP request to url, executes it using http.DefaultClient,
-// and then calls ReverseResponse on the response and provided handler.
+// Reverse makes a Reverse HTTP request to url, executes it using
+// http.DefaultClient, and then calls ReverseResponse on the response and
+// provided handler.
 func Reverse(url string, handler http.Handler) error {
 	req, err := NewRequest(url)
 	if err != nil {
@@ -124,7 +126,8 @@ func Reverse(url string, handler http.Handler) error {
 	return ReverseResponse(resp, handler)
 }
 
-// Exactly the Same as Reverse but takes a function compatible with http.HandlerFunc instead of an http.Handler
+// ReverseFunc is Exactly the Same as Reverse but takes a function compatible
+// with http.HandlerFunc instead of an http.Handler
 func ReverseFunc(url string, fun func(w http.ResponseWriter, r *http.Request)) error {
 	return Reverse(url, http.HandlerFunc(fun))
 }

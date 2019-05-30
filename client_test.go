@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"testing"
 )
@@ -189,42 +190,33 @@ func TestReverse(t *testing.T) {
 		t.Error(err)
 	}
 
-	// TODO: this is currently covered in the integration test,
-	//       but this should be fixed either way
-	/*
+	rh := http.Header{}
+	rh.Add("Content-Type", "text/plain")
+	req, err := http.NewRequest("POST", "http://example.com/path",
+		ioutil.NopCloser(bytes.NewReader([]byte("hello world\n"))))
+	req.Header = rh
+	expect(t, nil, err)
 
-		wbuf := new(bytes.Buffer)
-		rbuf := new(bytes.Buffer)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Upgrade", "PTTH/1.0")
+		w.Header().Add("Connection", "Upgrade")
+		w.WriteHeader(http.StatusSwitchingProtocols)
 
-		rh := http.Header{}
-		rh.Add("Content-Type", "text/plain")
-		req, err := http.NewRequest("POST", "http://example.com/path",
-			ioutil.NopCloser(bytes.NewReader([]byte("hello world\n"))))
-		req.Header = rh
+		_, buf, err := w.(http.Hijacker).Hijack()
 		expect(t, nil, err)
 
-		resp := http.Response{
-			StatusCode: http.StatusSwitchingProtocols,
-			ProtoMajor: 1,
-			ProtoMinor: 1,
-			Request: req,
-			Header: http.Header{},
-		}
-		resp.Header.Add("Upgrade", "PTTH/1.0")
-		resp.Header.Add("Connection", "Upgrade")
-		resp.Write(rbuf)
+		req.Write(buf)
+		err = buf.Flush()
+		expect(t, nil, err)
+		resp, err := http.ReadResponse(buf.Reader, req)
+		expect(t, "text/plain", resp.Header.Get("Content-Type"))
 
-		req.Write(rbuf)
+		b, err := ioutil.ReadAll(resp.Body)
+		expect(t, nil, err)
+		expect(t, []byte("hello world\n"), b)
+	}))
 
-		//x, _ := ioutil.ReadAll(rbuf)
-		//fmt.Println(string(x))
-
-		http.DefaultClient = &http.Client{
-			Transport: newIoTripper(wbuf, rbuf),
-		}
-		//err = Reverse("http://example.com/path", handler)
-		//expect(t, nil, err)
-		//b, _ := ioutil.ReadAll(wbuf)
-		//fmt.Println(string(b))
-	*/
+	http.DefaultClient = srv.Client()
+	err = Reverse(srv.URL, handler)
+	expect(t, nil, err)
 }

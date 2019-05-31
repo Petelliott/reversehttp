@@ -91,6 +91,7 @@ func TestReverseRequest(t *testing.T) {
 		expect(t, nil, err)
 		expect(t, []byte("hello world\n"), b)
 	}))
+	defer srv.Close()
 
 	r, err = NewRequest(srv.URL)
 	r.Body = ioutil.NopCloser(bytes.NewReader([]byte("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nhello world\n")))

@@ -209,12 +209,14 @@ func TestReverse(t *testing.T) {
 		err = buf.Flush()
 		expect(t, nil, err)
 		resp, err := http.ReadResponse(buf.Reader, req)
+		expect(t, nil, err)
 		expect(t, "text/plain", resp.Header.Get("Content-Type"))
 
 		b, err := ioutil.ReadAll(resp.Body)
 		expect(t, nil, err)
 		expect(t, []byte("hello world\n"), b)
 	}))
+	defer srv.Close()
 
 	http.DefaultClient = srv.Client()
 	err = Reverse(srv.URL, handler)

@@ -2,8 +2,8 @@ package reversehttp
 
 import (
 	"bufio"
-	"io"
 	"errors"
+	"io"
 	"net/http"
 	"sync"
 )

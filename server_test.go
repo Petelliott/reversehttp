@@ -8,8 +8,8 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
-	"testing"
 	"reflect"
+	"testing"
 )
 
 func TestIsReverseHTTPRequest(t *testing.T) {

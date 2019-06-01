@@ -8,7 +8,6 @@ import (
 )
 
 func TestReverseHTTPGet(t *testing.T) {
-	t.Skip("checking unit test coverage")
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c, err := ReverseRequest(w, r)
 		expect(t, nil, err)
@@ -32,7 +31,6 @@ func TestReverseHTTPGet(t *testing.T) {
 }
 
 func TestReverseReverseHTTP(t *testing.T) {
-	t.Skip("checking unit test coverage")
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c, err := ReverseRequest(w, r)
 		expect(t, nil, err)

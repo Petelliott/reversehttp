@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net/http"
 	"net"
+	"net/http"
 	"sync"
 )
 
@@ -106,11 +106,11 @@ func (r *response) flushLocked() {
 
 	if !r.flushed {
 		resp := http.Response{
-			StatusCode:    r.status,
-			ProtoMajor:    r.req.ProtoMajor,
-			ProtoMinor:    r.req.ProtoMinor,
-			Request:       r.req,
-			Header:        r.header,
+			StatusCode: r.status,
+			ProtoMajor: r.req.ProtoMajor,
+			ProtoMinor: r.req.ProtoMinor,
+			Request:    r.req,
+			Header:     r.header,
 		}
 		resp.Write(r.rw)
 	}
@@ -152,7 +152,6 @@ func (r *response) Close() {
 func (r *response) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-
 
 	if r.hijacked {
 		return nil, nil, errors.New("cannot re-hijack response")

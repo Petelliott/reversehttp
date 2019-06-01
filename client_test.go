@@ -94,7 +94,6 @@ func TestInternalResponse(t *testing.T) {
 	expect(t, nil, err)
 	expect(t, string(expected), string(b))
 
-
 }
 
 func TestInternalResponseFlush(t *testing.T) {

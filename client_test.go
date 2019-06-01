@@ -65,8 +65,9 @@ func TestInternalResponse(t *testing.T) {
 	expect(t, nil, err)
 
 	buf := bytes.NewBuffer(make([]byte, 0))
+	rw := bufio.NewReadWriter(nil, bufio.NewWriter(buf))
 
-	resp := newResponse(req, buf)
+	resp := newResponse(req, rw)
 	resp.Header().Add("Content-Type", "application/x-testtype")
 
 	resp.Write([]byte("hello world\n"))
@@ -79,8 +80,9 @@ func TestInternalResponse(t *testing.T) {
 
 	// test with writeheader
 	buf = bytes.NewBuffer(make([]byte, 0))
+	rw = bufio.NewReadWriter(nil, bufio.NewWriter(buf))
 
-	resp = newResponse(req, buf)
+	resp = newResponse(req, rw)
 	resp.Header().Add("Content-Type", "application/x-testtype")
 
 	resp.WriteHeader(http.StatusOK)

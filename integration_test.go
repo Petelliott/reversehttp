@@ -31,6 +31,7 @@ func TestReverseHTTPGet(t *testing.T) {
 }
 
 func TestReverseReverseHTTP(t *testing.T) {
+	t.Skip("this feature is not yet supported")
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c, err := ReverseRequest(w, r)
 		expect(t, nil, err)

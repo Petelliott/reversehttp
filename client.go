@@ -37,7 +37,7 @@ func IsReverseHTTPResponse(resp *http.Response) bool {
 }
 
 type response struct {
-	writer      io.Writer
+	rw			*bufio.ReadWriter
 	bodybuf     *bytes.Buffer
 	req         *http.Request
 	status      int
@@ -45,8 +45,8 @@ type response struct {
 	headwritten bool
 }
 
-func newResponse(req *http.Request, writer io.Writer) *response {
-	r := response{writer, new(bytes.Buffer), req, 0, http.Header{}, false}
+func newResponse(req *http.Request, rw *bufio.ReadWriter) *response {
+	r := response{rw, new(bytes.Buffer), req, 0, http.Header{}, false}
 	return &r
 }
 
@@ -83,7 +83,8 @@ func (r *response) Flush() {
 		Body:          ioutil.NopCloser(r.bodybuf),
 	}
 
-	resp.Write(r.writer)
+	resp.Write(r.rw)
+	r.rw.Flush()
 }
 
 // ReverseResponse serves the http request in the upgraded body of response
@@ -97,13 +98,16 @@ func ReverseResponse(resp *http.Response, handler http.Handler) error {
 	breader := resp.Body
 	bwriter := resp.Body.(io.Writer)
 
+	rw := bufio.NewReadWriter(bufio.NewReader(breader),
+		bufio.NewWriter(bwriter))
+
 	// TODO: http persistent connections
 
-	req, err := http.ReadRequest(bufio.NewReader(breader))
+	req, err := http.ReadRequest(rw.Reader)
 	if err != nil {
 		return fmt.Errorf("error reading request: %v", err)
 	}
-	w := newResponse(req, bwriter)
+	w := newResponse(req, rw)
 	handler.ServeHTTP(w, req)
 	w.Flush()
 	resp.Body.Close()

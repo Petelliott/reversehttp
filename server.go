@@ -23,10 +23,10 @@ func IsReverseHTTPRequest(req *http.Request) bool {
 
 type upgradeBody struct {
 	rw       *bufio.ReadWriter
-	realBody io.ReadCloser
+	realBody io.Closer
 }
 
-func newUpgradeBody(rw *bufio.ReadWriter, realBody io.ReadCloser) upgradeBody {
+func newUpgradeBody(rw *bufio.ReadWriter, realBody io.Closer) upgradeBody {
 	return upgradeBody{rw, realBody}
 }
 

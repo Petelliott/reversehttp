@@ -8,6 +8,8 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net"
+	"sync"
 )
 
 // NewRequest creates an http.Request that will upgrade the connections to
@@ -37,6 +39,7 @@ func IsReverseHTTPResponse(resp *http.Response) bool {
 }
 
 type response struct {
+	mu          sync.Mutex
 	rw          *bufio.ReadWriter
 	bodybuf     *bytes.Buffer
 	req         *http.Request
@@ -44,18 +47,19 @@ type response struct {
 	header      http.Header
 	headwritten bool
 	flushed     bool
+	hijacked    bool
 }
 
 func newResponse(req *http.Request, rw *bufio.ReadWriter) *response {
-	r := response{
+	return &response{
 		rw:          rw,
 		bodybuf:     new(bytes.Buffer),
 		req:         req,
 		header:      http.Header{},
 		headwritten: false,
 		flushed:     false,
+		hijacked:    false,
 	}
-	return &r
 }
 
 func (r *response) Header() http.Header {
@@ -63,14 +67,21 @@ func (r *response) Header() http.Header {
 }
 
 func (r *response) Write(b []byte) (int, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.hijacked {
+		return 0, errors.New("cannot write to response after Hijacking")
+	}
+
 	if !r.headwritten {
-		r.WriteHeader(http.StatusOK)
+		r.writeHeaderLocked(http.StatusOK)
 	}
 
 	return r.bodybuf.Write(b)
 }
 
-func (r *response) WriteHeader(statusCode int) {
+func (r *response) writeHeaderLocked(statusCode int) {
 	if r.headwritten {
 		return
 	}
@@ -80,7 +91,19 @@ func (r *response) WriteHeader(statusCode int) {
 	r.headwritten = true
 }
 
-func (r *response) Flush() {
+func (r *response) WriteHeader(statusCode int) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.writeHeaderLocked(statusCode)
+}
+
+func (r *response) flushLocked() {
+
+	if r.hijacked {
+		return
+	}
+
 	if !r.flushed {
 		resp := http.Response{
 			StatusCode:    r.status,
@@ -88,8 +111,6 @@ func (r *response) Flush() {
 			ProtoMinor:    r.req.ProtoMinor,
 			Request:       r.req,
 			Header:        r.header,
-			//ContentLength: int64(r.bodybuf.Len()),
-			//Body:          ioutil.NopCloser(r.bodybuf),
 		}
 		resp.Write(r.rw)
 	}
@@ -98,7 +119,17 @@ func (r *response) Flush() {
 	r.rw.Flush()
 }
 
+func (r *response) Flush() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.flushLocked()
+}
+
 func (r *response) Close() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	if !r.flushed {
 		resp := http.Response{
 			StatusCode:    r.status,
@@ -115,6 +146,21 @@ func (r *response) Close() {
 		r.rw.ReadFrom(r.bodybuf)
 		r.rw.Flush()
 	}
+}
+
+func (r *response) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+
+	if r.hijacked {
+		return nil, nil, errors.New("cannot re-hijack response")
+	}
+
+	r.flushLocked()
+
+	r.hijacked = true
+	return nil, r.rw, nil
 }
 
 // ReverseResponse serves the http request in the upgraded body of response

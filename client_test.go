@@ -94,6 +94,28 @@ func TestInternalResponse(t *testing.T) {
 	expect(t, nil, err)
 	expect(t, string(expected), string(b))
 
+
+}
+
+func TestInternalResponseFlush(t *testing.T) {
+	req, err := NewRequest("http://example.com/path")
+	expect(t, nil, err)
+
+	expected := []byte("HTTP/1.1 200 OK\r\nContent-Length: 0\r\nContent-Type: application/x-testtype\r\n\r\nhello world\n")
+	buf := bytes.NewBuffer(make([]byte, 0))
+	rw := bufio.NewReadWriter(nil, bufio.NewWriter(buf))
+
+	resp := newResponse(req, rw)
+	resp.Header().Add("Content-Type", "application/x-testtype")
+
+	resp.Write([]byte("hello "))
+	resp.Flush()
+	resp.Write([]byte("world\n"))
+	resp.Close()
+
+	b, err := ioutil.ReadAll(buf)
+	expect(t, nil, err)
+	expect(t, string(expected), string(b))
 }
 
 type testBody struct {

@@ -117,6 +117,7 @@ func (r *response) flushLocked() {
 
 	r.rw.ReadFrom(r.bodybuf)
 	r.rw.Flush()
+	r.flushed = true
 }
 
 func (r *response) Flush() {

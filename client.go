@@ -158,6 +158,7 @@ func (r *response) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 		return nil, nil, errors.New("cannot re-hijack response")
 	}
 
+	r.writeHeaderLocked(http.StatusOK)
 	r.flushLocked()
 
 	r.hijacked = true

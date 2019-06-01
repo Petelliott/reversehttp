@@ -118,6 +118,41 @@ func TestInternalResponseFlush(t *testing.T) {
 	expect(t, string(expected), string(b))
 }
 
+func TestInternalResponseHijack(t *testing.T) {
+	req, err := NewRequest("http://example.com/path")
+	expect(t, nil, err)
+
+	expected := []byte("HTTP/1.1 200 OK\r\nContent-Length: 0\r\nContent-Type: application/x-testtype\r\n\r\nhullo werld\n")
+	buf := bytes.NewBuffer(make([]byte, 0))
+	rw := bufio.NewReadWriter(nil, bufio.NewWriter(buf))
+
+	resp := newResponse(req, rw)
+	resp.Header().Add("Content-Type", "application/x-testtype")
+
+	_, hbuf, err := resp.Hijack()
+	expect(t, nil, err)
+
+	_, err = resp.Write([]byte("hello World"))
+	if err == nil {
+		t.Error("this should have errored, but didn't")
+	}
+
+	_, _, err = resp.Hijack()
+	if err == nil {
+		t.Error("this should have errored, but didn't")
+	}
+
+	_, err = hbuf.Write([]byte("hullo werld\n"))
+	expect(t, nil, err)
+	err = hbuf.Flush()
+	expect(t, nil, err)
+	resp.Close()
+
+	b, err := ioutil.ReadAll(buf)
+	expect(t, nil, err)
+	expect(t, string(expected), string(b))
+}
+
 type testBody struct {
 	Writer io.Writer
 	Reader io.Reader

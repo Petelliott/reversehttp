@@ -66,6 +66,12 @@ func TestUpgradeBodyWrite(t *testing.T) {
 	if err == nil {
 		t.Error("write did not fail")
 	}
+
+	ub = newUpgradeBody(bufio.NewReadWriter(nil, bufio.NewWriterSize(errorWriter{}, 1)), nil)
+	_, err = ub.Write([]byte("hello world\n"))
+	if err == nil {
+		t.Error("write did not fail")
+	}
 }
 
 type closeChecker struct {

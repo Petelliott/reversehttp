@@ -37,16 +37,24 @@ func IsReverseHTTPResponse(resp *http.Response) bool {
 }
 
 type response struct {
-	rw			*bufio.ReadWriter
+	rw          *bufio.ReadWriter
 	bodybuf     *bytes.Buffer
 	req         *http.Request
 	status      int
 	header      http.Header
 	headwritten bool
+	flushed     bool
 }
 
 func newResponse(req *http.Request, rw *bufio.ReadWriter) *response {
-	r := response{rw, new(bytes.Buffer), req, 0, http.Header{}, false}
+	r := response{
+		rw:          rw,
+		bodybuf:     new(bytes.Buffer),
+		req:         req,
+		header:      http.Header{},
+		headwritten: false,
+		flushed:     false,
+	}
 	return &r
 }
 
@@ -73,18 +81,40 @@ func (r *response) WriteHeader(statusCode int) {
 }
 
 func (r *response) Flush() {
-	resp := http.Response{
-		StatusCode:    r.status,
-		ProtoMajor:    1,
-		ProtoMinor:    1,
-		Request:       r.req,
-		Header:        r.header,
-		ContentLength: int64(r.bodybuf.Len()),
-		Body:          ioutil.NopCloser(r.bodybuf),
+	if !r.flushed {
+		resp := http.Response{
+			StatusCode:    r.status,
+			ProtoMajor:    r.req.ProtoMajor,
+			ProtoMinor:    r.req.ProtoMinor,
+			Request:       r.req,
+			Header:        r.header,
+			//ContentLength: int64(r.bodybuf.Len()),
+			//Body:          ioutil.NopCloser(r.bodybuf),
+		}
+		resp.Write(r.rw)
 	}
 
-	resp.Write(r.rw)
+	r.rw.ReadFrom(r.bodybuf)
 	r.rw.Flush()
+}
+
+func (r *response) Close() {
+	if !r.flushed {
+		resp := http.Response{
+			StatusCode:    r.status,
+			ProtoMajor:    r.req.ProtoMajor,
+			ProtoMinor:    r.req.ProtoMinor,
+			Request:       r.req,
+			Header:        r.header,
+			ContentLength: int64(r.bodybuf.Len()),
+			Body:          ioutil.NopCloser(r.bodybuf),
+		}
+		resp.Write(r.rw)
+		r.rw.Flush()
+	} else {
+		r.rw.ReadFrom(r.bodybuf)
+		r.rw.Flush()
+	}
 }
 
 // ReverseResponse serves the http request in the upgraded body of response
@@ -109,7 +139,7 @@ func ReverseResponse(resp *http.Response, handler http.Handler) error {
 	}
 	w := newResponse(req, rw)
 	handler.ServeHTTP(w, req)
-	w.Flush()
+	w.Close()
 	resp.Body.Close()
 	return nil
 }

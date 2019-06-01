@@ -71,12 +71,12 @@ func TestInternalResponse(t *testing.T) {
 	resp.Header().Add("Content-Type", "application/x-testtype")
 
 	resp.Write([]byte("hello world\n"))
-	resp.Flush()
+	resp.Close()
 
 	b, err := ioutil.ReadAll(buf)
 	expect(t, nil, err)
 	expected := []byte("HTTP/1.1 200 OK\r\nContent-Length: 12\r\nContent-Type: application/x-testtype\r\n\r\nhello world\n")
-	expect(t, expected, b)
+	expect(t, string(expected), string(b))
 
 	// test with writeheader
 	buf = bytes.NewBuffer(make([]byte, 0))
@@ -88,11 +88,11 @@ func TestInternalResponse(t *testing.T) {
 	resp.WriteHeader(http.StatusOK)
 	resp.WriteHeader(http.StatusOK)
 	resp.Write([]byte("hello world\n"))
-	resp.Flush()
+	resp.Close()
 
 	b, err = ioutil.ReadAll(buf)
 	expect(t, nil, err)
-	expect(t, expected, b)
+	expect(t, string(expected), string(b))
 
 }
 

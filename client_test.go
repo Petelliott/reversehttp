@@ -136,6 +136,8 @@ func TestInternalResponseHijack(t *testing.T) {
 	if err == nil {
 		t.Error("this should have errored, but didn't")
 	}
+	// this should have no effect
+	resp.Flush()
 
 	_, _, err = resp.Hijack()
 	if err == nil {
@@ -280,4 +282,13 @@ func TestReverse(t *testing.T) {
 	http.DefaultClient = srv.Client()
 	err = Reverse(srv.URL, handler)
 	expect(t, nil, err)
+}
+
+func TestReverseFunc(t *testing.T) {
+	err := ReverseFunc("asdkjfklvqnvnon  idga %%2", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("whatever"))
+	})
+	if err == nil {
+		t.Error(err)
+	}
 }

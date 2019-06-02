@@ -3,6 +3,7 @@ package reversehttp
 import (
 	"bufio"
 	"errors"
+	"io"
 	"net/http"
 	"sync"
 )
@@ -18,6 +19,32 @@ func IsReverseHTTPRequest(req *http.Request) bool {
 
 	return req.Header.Get("Upgrade") == "PTTH/1.0" &&
 		req.Header.Get("Connection") == "Upgrade"
+}
+
+type upgradeBody struct {
+	rw       *bufio.ReadWriter
+	realBody io.Closer
+}
+
+func newUpgradeBody(rw *bufio.ReadWriter, realBody io.Closer) upgradeBody {
+	return upgradeBody{rw, realBody}
+}
+
+func (ub upgradeBody) Read(p []byte) (int, error) {
+	return ub.rw.Read(p)
+}
+
+func (ub upgradeBody) Write(p []byte) (int, error) {
+	n, err := ub.rw.Write(p)
+	if err != nil {
+		return n, err
+	}
+	err = ub.rw.Flush()
+	return n, err
+}
+
+func (ub upgradeBody) Close() error {
+	return ub.realBody.Close()
 }
 
 type ioTripper struct {
@@ -42,6 +69,11 @@ func (it *ioTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 	resp, err := http.ReadResponse(it.rw.Reader, req)
+
+	// provide writable body on switch protocols
+	if resp.StatusCode == http.StatusSwitchingProtocols {
+		resp.Body = newUpgradeBody(it.rw, resp.Body)
+	}
 	return resp, err
 }
 

@@ -65,33 +65,93 @@ func TestInternalResponse(t *testing.T) {
 	expect(t, nil, err)
 
 	buf := bytes.NewBuffer(make([]byte, 0))
+	rw := bufio.NewReadWriter(nil, bufio.NewWriter(buf))
 
-	resp := newResponse(req, buf)
+	resp := newResponse(req, rw)
 	resp.Header().Add("Content-Type", "application/x-testtype")
 
 	resp.Write([]byte("hello world\n"))
-	resp.Flush()
+	resp.Close()
 
 	b, err := ioutil.ReadAll(buf)
 	expect(t, nil, err)
 	expected := []byte("HTTP/1.1 200 OK\r\nContent-Length: 12\r\nContent-Type: application/x-testtype\r\n\r\nhello world\n")
-	expect(t, expected, b)
+	expect(t, string(expected), string(b))
 
 	// test with writeheader
 	buf = bytes.NewBuffer(make([]byte, 0))
+	rw = bufio.NewReadWriter(nil, bufio.NewWriter(buf))
 
-	resp = newResponse(req, buf)
+	resp = newResponse(req, rw)
 	resp.Header().Add("Content-Type", "application/x-testtype")
 
 	resp.WriteHeader(http.StatusOK)
 	resp.WriteHeader(http.StatusOK)
 	resp.Write([]byte("hello world\n"))
-	resp.Flush()
+	resp.Close()
 
 	b, err = ioutil.ReadAll(buf)
 	expect(t, nil, err)
-	expect(t, expected, b)
+	expect(t, string(expected), string(b))
 
+}
+
+func TestInternalResponseFlush(t *testing.T) {
+	req, err := NewRequest("http://example.com/path")
+	expect(t, nil, err)
+
+	expected := []byte("HTTP/1.1 200 OK\r\nContent-Length: 0\r\nContent-Type: application/x-testtype\r\n\r\nhello world\n")
+	buf := bytes.NewBuffer(make([]byte, 0))
+	rw := bufio.NewReadWriter(nil, bufio.NewWriter(buf))
+
+	resp := newResponse(req, rw)
+	resp.Header().Add("Content-Type", "application/x-testtype")
+
+	resp.Write([]byte("hello "))
+	resp.Flush()
+	resp.Write([]byte("world\n"))
+	resp.Close()
+
+	b, err := ioutil.ReadAll(buf)
+	expect(t, nil, err)
+	expect(t, string(expected), string(b))
+}
+
+func TestInternalResponseHijack(t *testing.T) {
+	req, err := NewRequest("http://example.com/path")
+	expect(t, nil, err)
+
+	expected := []byte("HTTP/1.1 200 OK\r\nContent-Length: 0\r\nContent-Type: application/x-testtype\r\n\r\nhullo werld\n")
+	buf := bytes.NewBuffer(make([]byte, 0))
+	rw := bufio.NewReadWriter(nil, bufio.NewWriter(buf))
+
+	resp := newResponse(req, rw)
+	resp.Header().Add("Content-Type", "application/x-testtype")
+
+	_, hbuf, err := resp.Hijack()
+	expect(t, nil, err)
+
+	_, err = resp.Write([]byte("hello World"))
+	if err == nil {
+		t.Error("this should have errored, but didn't")
+	}
+	// this should have no effect
+	resp.Flush()
+
+	_, _, err = resp.Hijack()
+	if err == nil {
+		t.Error("this should have errored, but didn't")
+	}
+
+	_, err = hbuf.Write([]byte("hullo werld\n"))
+	expect(t, nil, err)
+	err = hbuf.Flush()
+	expect(t, nil, err)
+	resp.Close()
+
+	b, err := ioutil.ReadAll(buf)
+	expect(t, nil, err)
+	expect(t, string(expected), string(b))
 }
 
 type testBody struct {
@@ -209,14 +269,25 @@ func TestReverse(t *testing.T) {
 		err = buf.Flush()
 		expect(t, nil, err)
 		resp, err := http.ReadResponse(buf.Reader, req)
+		expect(t, nil, err)
 		expect(t, "text/plain", resp.Header.Get("Content-Type"))
 
 		b, err := ioutil.ReadAll(resp.Body)
 		expect(t, nil, err)
 		expect(t, []byte("hello world\n"), b)
 	}))
+	defer srv.Close()
 
 	http.DefaultClient = srv.Client()
 	err = Reverse(srv.URL, handler)
 	expect(t, nil, err)
+}
+
+func TestReverseFunc(t *testing.T) {
+	err := ReverseFunc("asdkjfklvqnvnon  idga %%2", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("whatever"))
+	})
+	if err == nil {
+		t.Error(err)
+	}
 }

@@ -259,6 +259,8 @@ func TestReverse(t *testing.T) {
 	req.Header = rh
 	expect(t, nil, err)
 
+	endserver := make(chan struct{})
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Upgrade", "PTTH/1.0")
 		w.Header().Add("Connection", "Upgrade")
@@ -277,12 +279,16 @@ func TestReverse(t *testing.T) {
 		b, err := ioutil.ReadAll(resp.Body)
 		expect(t, nil, err)
 		expect(t, []byte("hello world\n"), b)
+
+		close(endserver)
 	}))
 	defer srv.Close()
 
 	http.DefaultClient = srv.Client()
 	err = Reverse(srv.URL, handler)
 	expect(t, nil, err)
+
+	<-endserver
 }
 
 func TestReverseFunc(t *testing.T) {

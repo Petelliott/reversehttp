@@ -8,6 +8,8 @@ import (
 )
 
 func TestReverseHTTPGet(t *testing.T) {
+	endserver := make(chan struct{})
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c, err := ReverseRequest(w, r)
 		expect(t, nil, err)
@@ -17,6 +19,8 @@ func TestReverseHTTPGet(t *testing.T) {
 		b, err := ioutil.ReadAll(resp.Body)
 		expect(t, nil, err)
 		expect(t, []byte("hello world\n"), b)
+
+		close(endserver)
 	}))
 	defer srv.Close()
 
@@ -28,9 +32,12 @@ func TestReverseHTTPGet(t *testing.T) {
 		expect(t, nil, err)
 	})
 	expect(t, nil, err)
+	<-endserver
 }
 
 func TestReverseReverseHTTP(t *testing.T) {
+	endserver := make(chan struct{})
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c, err := ReverseRequest(w, r)
 		expect(t, nil, err)
@@ -42,11 +49,14 @@ func TestReverseReverseHTTP(t *testing.T) {
 			expect(t, nil, err)
 		})
 		expect(t, nil, err)
+
+		close(endserver)
 	}))
 	defer srv.Close()
 
 	http.DefaultClient = srv.Client()
 
+	endclient := make(chan struct{})
 	err := ReverseFunc(srv.URL, func(w http.ResponseWriter, r *http.Request) {
 		c, err := ReverseRequest(w, r)
 		expect(t, nil, err)
@@ -57,6 +67,9 @@ func TestReverseReverseHTTP(t *testing.T) {
 		expect(t, nil, err)
 		expect(t, []byte("hello world\n"), b)
 		resp.Body.Close()
+		close(endclient)
 	})
 	expect(t, nil, err)
+	<-endclient
+	<-endserver
 }

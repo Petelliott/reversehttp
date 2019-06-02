@@ -68,7 +68,11 @@ func (it *ioTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	resp, err := http.ReadResponse(it.rw.Reader, req)
+	if err != nil {
+		return resp, err
+	}
 
 	// provide writable body on switch protocols
 	if resp.StatusCode == http.StatusSwitchingProtocols {

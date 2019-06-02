@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"testing"
+	"io"
 )
 
 func TestIsReverseHTTPRequest(t *testing.T) {
@@ -145,6 +146,8 @@ func TestReverseRequest(t *testing.T) {
 		t.Error()
 	}
 
+	endserver := make(chan struct{})
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c, err := ReverseRequest(w, r)
 		expect(t, nil, err)
@@ -156,20 +159,26 @@ func TestReverseRequest(t *testing.T) {
 		b, err := ioutil.ReadAll(resp.Body)
 		expect(t, nil, err)
 		expect(t, []byte("hello world\n"), b)
+
+		close(endserver)
 	}))
 	defer srv.Close()
 
 	r, err = NewRequest(srv.URL)
-	r.Body = ioutil.NopCloser(bytes.NewReader([]byte("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nhello world\n")))
 	expect(t, nil, err)
 
 	client := srv.Client()
 	resp, err := client.Do(r)
 	expect(t, nil, err)
 
+	resp.Body.(io.Writer).Write([]byte("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nhello world\n"))
+
 	innerreq, err := http.ReadRequest(bufio.NewReader(resp.Body))
+	resp.Body.Close()
 	expect(t, nil, err)
 
 	expect(t, "GET", innerreq.Method)
 	expect(t, "/path2", innerreq.URL.String())
+
+	<-endserver
 }

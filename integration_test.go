@@ -56,6 +56,7 @@ func TestReverseReverseHTTP(t *testing.T) {
 		b, err := ioutil.ReadAll(resp.Body)
 		expect(t, nil, err)
 		expect(t, []byte("hello world\n"), b)
+		resp.Body.Close()
 	})
 	expect(t, nil, err)
 }

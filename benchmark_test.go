@@ -1,11 +1,11 @@
 package reversehttp
 
 import (
-	"testing"
-	"net/http"
+	"bytes"
 	"io"
 	"io/ioutil"
-	"bytes"
+	"net/http"
+	"testing"
 )
 
 type benchmarkBody struct {
@@ -22,7 +22,7 @@ func newBenchmarkBodyReq(request *http.Request, b *testing.B) *benchmarkBody {
 	buf := new(bytes.Buffer)
 	request.Write(buf)
 	data, _ := ioutil.ReadAll(buf)
-	return newBenchmarkBody(data,b)
+	return newBenchmarkBody(data, b)
 }
 
 func (bb *benchmarkBody) reset() {
@@ -56,7 +56,7 @@ func BenchmarkReverseResponse(b *testing.B) {
 	r := &http.Response{
 		StatusCode: http.StatusSwitchingProtocols,
 		Header:     h,
-		Body:		newBenchmarkBodyReq(req, b),
+		Body:       newBenchmarkBodyReq(req, b),
 	}
 
 	b.ResetTimer()

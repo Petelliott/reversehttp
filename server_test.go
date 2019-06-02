@@ -4,13 +4,13 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
 	"testing"
-	"io"
 )
 
 func TestIsReverseHTTPRequest(t *testing.T) {
@@ -29,14 +29,25 @@ func TestIsReverseHTTPRequest(t *testing.T) {
 	expect(t, false, IsReverseHTTPRequest(nil))
 }
 
-type errorWriter struct{}
+type errorWriter struct {
+	werr bool
+	rerr bool
+}
 
 func (ew errorWriter) Write(p []byte) (n int, err error) {
-	return 0, errors.New("error writers always fail, this is expected")
+	if ew.werr {
+		return 0, errors.New("error writers always fail, this is expected")
+	} else {
+		return len(p), nil
+	}
 }
 
 func (ew errorWriter) Read(p []byte) (n int, err error) {
-	return 0, errors.New("error writers always fail, this is expected")
+	if ew.rerr {
+		return 0, errors.New("error writers always fail, this is expected")
+	} else {
+		return len(p), nil
+	}
 }
 
 func TestUpgradeBodyRead(t *testing.T) {
@@ -62,13 +73,13 @@ func TestUpgradeBodyWrite(t *testing.T) {
 	expect(t, nil, err)
 	expect(t, "hello world\n", string(b))
 
-	ub = newUpgradeBody(bufio.NewReadWriter(nil, bufio.NewWriter(errorWriter{})), nil)
+	ub = newUpgradeBody(bufio.NewReadWriter(nil, bufio.NewWriter(errorWriter{true, true})), nil)
 	_, err = ub.Write([]byte("hello world\n"))
 	if err == nil {
 		t.Error("write did not fail")
 	}
 
-	ub = newUpgradeBody(bufio.NewReadWriter(nil, bufio.NewWriterSize(errorWriter{}, 1)), nil)
+	ub = newUpgradeBody(bufio.NewReadWriter(nil, bufio.NewWriterSize(errorWriter{true, true}, 1)), nil)
 	_, err = ub.Write([]byte("hello world\n"))
 	if err == nil {
 		t.Error("write did not fail")
@@ -94,13 +105,19 @@ func TestUpgradeBodyClose(t *testing.T) {
 }
 
 func TestIoTripper(t *testing.T) {
-	it := newIoTripper(bufio.NewReadWriter(bufio.NewReader(errorWriter{}), bufio.NewWriter(errorWriter{})))
+	it := newIoTripper(bufio.NewReadWriter(bufio.NewReader(errorWriter{true, true}), bufio.NewWriter(errorWriter{true, true})))
 
 	r, err := http.NewRequest("GET", "http://example.com/path", nil)
 	if err != nil {
 		t.Error()
 	}
 
+	_, err = it.RoundTrip(r)
+	if err == nil {
+		t.Error()
+	}
+
+	it = newIoTripper(bufio.NewReadWriter(bufio.NewReader(errorWriter{true, true}), bufio.NewWriter(errorWriter{false, false})))
 	_, err = it.RoundTrip(r)
 	if err == nil {
 		t.Error()

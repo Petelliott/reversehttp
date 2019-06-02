@@ -242,7 +242,9 @@ func TestReverse(t *testing.T) {
 	}
 
 	http.DefaultClient = &http.Client{
-		Transport: newIoTripper(bufio.NewReadWriter(bufio.NewReader(errorWriter{}), bufio.NewWriter(errorWriter{}))),
+		Transport: newIoTripper(
+			bufio.NewReadWriter(bufio.NewReader(errorWriter{true, true}),
+				bufio.NewWriter(errorWriter{true, true}))),
 	}
 
 	err = Reverse("http://example.com/path", handler)

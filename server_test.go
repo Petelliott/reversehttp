@@ -37,17 +37,15 @@ type errorWriter struct {
 func (ew errorWriter) Write(p []byte) (n int, err error) {
 	if ew.werr {
 		return 0, errors.New("error writers always fail, this is expected")
-	} else {
-		return len(p), nil
 	}
+	return len(p), nil
 }
 
 func (ew errorWriter) Read(p []byte) (n int, err error) {
 	if ew.rerr {
 		return 0, errors.New("error writers always fail, this is expected")
-	} else {
-		return len(p), nil
 	}
+	return len(p), nil
 }
 
 func TestUpgradeBodyRead(t *testing.T) {

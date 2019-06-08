@@ -1,9 +1,11 @@
 package reversehttp
 
 import (
+	"bufio"
 	"bytes"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"testing"
 )
@@ -66,5 +68,38 @@ func BenchmarkReverseResponse(b *testing.B) {
 		b.StopTimer()
 		r.Body.(*benchmarkBody).reset()
 		b.StartTimer()
+	}
+}
+
+type benchmarkRW struct {
+	header http.Header
+}
+
+func (brw benchmarkRW) Header() http.Header {
+	return brw.header
+}
+
+func (brw benchmarkRW) Write(b []byte) (int, error) {
+	return len(b), nil
+}
+
+func (brw benchmarkRW) WriteHeader(statusCode int) {
+	// do literally nothing
+}
+
+func (brw benchmarkRW) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	return nil, nil, nil
+}
+
+func BenchmarkReverseRequest(b *testing.B) {
+	b.ReportAllocs()
+
+	req, _ := NewRequest("http://example.com/path")
+	brw := benchmarkRW{http.Header{}}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		ReverseRequest(brw, req)
 	}
 }
